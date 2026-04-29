@@ -45,7 +45,7 @@ Output format:
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': 'Bearer ' + (process.env.GROQ_API_KEY || ''),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
