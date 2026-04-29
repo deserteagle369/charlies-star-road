@@ -69,16 +69,13 @@ export default function ShanghaiPage() {
   };
 
   const handlePhotoCapture = async (photoBase64: string) => {
+    // photoBase64 is captured but not sent to server (Pollinations generates from city prompt)
     setGameState('generating');
     try {
       const response = await fetch('/api/generate-reward', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          photoBase64,
-          city: cityKey,
-          username: 'Explorer',
-        }),
+        body: JSON.stringify({ city: cityKey, username: 'Explorer' }),
       });
 
       if (!response.ok) throw new Error('Failed to generate reward');
