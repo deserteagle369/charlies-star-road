@@ -3,10 +3,13 @@
  */
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CITY_MAP } from '@/lib/utils';
+import { CITY_MAP, CITY_ORDER } from '@/lib/utils';
+import MusicPlayer from './MusicPlayer';
+import PhotoGallery from './PhotoGallery';
 
-const CITY_ORDER = ['shanghai', 'london', 'paris', 'newyork', 'tokyo'];
+const TOTAL_STATIONS = CITY_ORDER.length; // 5
 
 // 周深介绍内容
 const ZHOUSHEN_INTRO = {
@@ -22,12 +25,46 @@ const ZHOUSHEN_INTRO = {
   highlights: '声线空灵 · 高音惊艳 · 中英双语 · 治愈人心',
 };
 
+interface MissionData {
+  current_city: string;
+  completed_cities: string[];
+  total_score: number;
+  unlocked_photos: number;
+}
+
 interface WorldMapProps {
   completedCities?: string[];
   username?: string;
 }
 
 export default function WorldMap({ completedCities = [], username = 'Explorer' }: WorldMapProps) {
+  const [missionData, setMissionData] = useState<MissionData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // 从 API 获取闯关进度
+  useEffect(() => {
+    const fetchMission = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/missions', {
+          headers: { 'x-user-id': 'demo-user' }, // 替换为真实 user_id
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMissionData(data);
+        }
+      } catch {
+        // 静默失败，显示默认状态
+      }
+      setLoading(false);
+    };
+    fetchMission();
+  }, []);
+
+  // 合并：优先用 API 数据，否则用 props
+  const allCompleted = missionData?.completed_cities || completedCities;
+  const unlockedPhotos = missionData?.unlocked_photos ?? 0;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* 背景装饰星星 */}
@@ -37,11 +74,11 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
             key={i}
             className="absolute text-yellow-300/20 animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              fontSize: `${8 + Math.random() * 16}px`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
+              left: `${(i * 17 + 7) % 100}%`,
+              top: `${(i * 23 + 11) % 100}%`,
+              fontSize: `${8 + (i % 5) * 4}px`,
+              animationDelay: `${(i * 0.3) % 3}s`,
+              animationDuration: `${2 + (i % 3)}s`,
             }}
           >
             ✦
@@ -50,11 +87,21 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
       </div>
 
       {/* 周深介绍区 */}
-      <div className="w-full max-w-2xl bg-white/5 backdrop-blur-sm rounded-2xl border border-yellow-400/20 p-5 mb-8">
+      <div className="w-full max-w-2xl bg-white/5 backdrop-blur-sm rounded-2xl border border-yellow-400/20 p-5 mb-6">
         <div className="flex items-start gap-4">
-          {/* 周深头像占位 - 后期替换为真实照片 */}
-          <div className="flex-shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-pink-400 flex items-center justify-center text-3xl">
-            🎤
+          {/* 周深头像占位 - 使用维基百科真实照片 */}
+          <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-yellow-400 to-pink-400 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Zhou_Shen%2C_Global_Chinese_Golden_Chart%2C_Beijing_2019_%28cropped%29.jpg/440px-Zhou_Shen%2C_Global_Chinese_Golden_Chart%2C_Beijing_2019_%28cropped%29.jpg"
+              alt="周深"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '🎤';
+              }}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs text-yellow-400/70 uppercase tracking-wider mb-0.5">
@@ -80,36 +127,30 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
           </div>
         </div>
 
-        {/* 音乐播放器 */}
-        <div className="mt-4 bg-white/5 rounded-xl p-3 flex items-center gap-3">
-          <div className="text-2xl animate-pulse flex-shrink-0">🎵</div>
-          <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-medium truncate">
-              正在播放 · 《大鱼》— 周深
-            </div>
-            <div className="mt-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full w-1/3 bg-gradient-to-r from-yellow-400 to-pink-400 rounded-full" />
-            </div>
-          </div>
-          {/* 播放/暂停按钮 */}
-          <button
-            className="flex-shrink-0 w-8 h-8 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-full flex items-center justify-center text-yellow-400 text-sm transition-colors"
-            title="播放周深音乐"
-            onClick={() => alert('音乐播放器：可将周深音乐文件放入 public/music/ 目录后启用')}
-          >
-            ▶
-          </button>
-        </div>
+        {/* 音乐播放器（紧凑模式） */}
+        <MusicPlayer compact />
       </div>
 
       {/* 标题 */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">
           🌟 Charlie&apos;s Star Road
         </h1>
         <p className="text-lg text-blue-200">
           欢迎，{username}！开启你的英语星光之旅 ✨
         </p>
+        {/* 进度总览 */}
+        {allCompleted.length > 0 && (
+          <div className="mt-2 flex items-center justify-center gap-3 text-sm">
+            <span className="text-yellow-400">
+              ⭐ 已完成 {allCompleted.length}/{TOTAL_STATIONS} 站
+            </span>
+            <span className="text-blue-200/50">|</span>
+            <span className="text-pink-300">
+              📸 已解锁 {unlockedPhotos} 张照片
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 地图容器 */}
@@ -127,7 +168,8 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
             const y1 = ((90 - current.lat) / 180) * 300;
             const x2 = ((next.lng + 180) / 360) * 400;
             const y2 = ((90 - next.lat) / 180) * 300;
-            const isCompleted = completedCities.includes(city) && completedCities.includes(CITY_ORDER[i + 1]);
+            const isCompleted = allCompleted.includes(city) && allCompleted.includes(CITY_ORDER[i + 1]);
+            const currentDone = allCompleted.includes(city);
 
             return (
               <line
@@ -136,9 +178,9 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke={isCompleted ? '#ffd700' : completedCities.includes(city) ? '#4ade80' : '#4a5568'}
+                stroke={isCompleted ? '#ffd700' : currentDone ? '#4ade80' : '#4a5568'}
                 strokeWidth="2"
-                strokeDasharray={isCompleted ? '0' : '5,5'}
+                strokeDasharray={isCompleted || currentDone ? '0' : '5,5'}
               />
             );
           })}
@@ -148,8 +190,11 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
         <div className="grid grid-cols-3 gap-4 md:gap-8">
           {CITY_ORDER.map((cityKey, index) => {
             const city = CITY_MAP[cityKey];
-            const isCompleted = completedCities.includes(cityKey);
-            const isUnlocked = city.unlocked || index === 0 || completedCities.includes(CITY_ORDER[index - 1]);
+            const isCompleted = allCompleted.includes(cityKey);
+            const isUnlocked =
+              city.unlocked ||
+              index === 0 ||
+              allCompleted.includes(CITY_ORDER[index - 1]);
 
             return (
               <Link
@@ -185,9 +230,14 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
         </div>
       </div>
 
+      {/* 照片墙（渐进解锁） */}
+      <div className="w-full max-w-2xl mt-6">
+        <PhotoGallery unlockedCount={unlockedPhotos} totalStations={TOTAL_STATIONS} />
+      </div>
+
       {/* 底部提示 */}
-      <div className="mt-8 text-center text-blue-200/70 text-sm">
-        <p>完成当前关卡即可解锁下一站 🌉</p>
+      <div className="mt-6 text-center text-blue-200/70 text-sm">
+        <p>完成当前关卡即可解锁下一站 🌉 · 集齐全部 {TOTAL_STATIONS} 张星光照片 🏆</p>
       </div>
     </div>
   );

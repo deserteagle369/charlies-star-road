@@ -2,6 +2,9 @@
  * 通用工具函数
  */
 
+/** 城市站点顺序（对应解锁进度） */
+export const CITY_ORDER = ['shanghai', 'london', 'paris', 'newyork', 'tokyo'] as const;
+
 /** 拼音城市名映射 */
 export const CITY_MAP: Record<string, { en: string; zh: string; emoji: string; lat: number; lng: number; unlocked: boolean }> = {
   shanghai: { en: 'Shanghai', zh: '上海', emoji: '🏙️', lat: 31.2, lng: 121.5, unlocked: true },
