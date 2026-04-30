@@ -60,6 +60,15 @@ export default function LoginPage() {
           <p className="text-purple-200/70 mt-2 text-sm">跟周深一起环游世界学英语</p>
         </div>
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
+          {/* 周深标语 */}
+          <div className="text-center mb-4 pb-4 border-b border-white/10">
+            <p className="text-yellow-400/80 text-sm italic">"跟周深一起环游世界学英语"</p>
+            <div className="flex justify-center gap-3 mt-2">
+              <span className="text-pink-300/60 text-xs">🎵 空灵高音</span>
+              <span className="text-blue-300/60 text-xs">✈️ 环游世界</span>
+              <span className="text-yellow-300/60 text-xs">📖 学英语</span>
+            </div>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-purple-200 mb-1.5">邮箱</label>

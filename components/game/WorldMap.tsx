@@ -8,6 +8,20 @@ import { CITY_MAP } from '@/lib/utils';
 
 const CITY_ORDER = ['shanghai', 'london', 'paris', 'newyork', 'tokyo'];
 
+// 周深介绍内容
+const ZHOUSHEN_INTRO = {
+  quote: '"用唱歌的方式，表达内心最真实的声音"',
+  name: '周深 (Zhou Shen)',
+  title: '中国内地流行乐男歌手 · 跨性别音乐人',
+  achievements: [
+    '《大鱼》 - 播放量破亿，经典传唱',
+    '《起风了》 - 全网热播，感动无数',
+    '《光亮》 - 冬奥主题歌，惊艳世界',
+    '《Rubbish》 - 全英文创作，跨越语言',
+  ],
+  highlights: '声线空灵 · 高音惊艳 · 中英双语 · 治愈人心',
+};
+
 interface WorldMapProps {
   completedCities?: string[];
   username?: string;
@@ -15,13 +29,87 @@ interface WorldMapProps {
 
 export default function WorldMap({ completedCities = [], username = 'Explorer' }: WorldMapProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* 背景装饰星星 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute text-yellow-300/20 animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              fontSize: `${8 + Math.random() * 16}px`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${2 + Math.random() * 3}s`,
+            }}
+          >
+            ✦
+          </div>
+        ))}
+      </div>
+
+      {/* 周深介绍区 */}
+      <div className="w-full max-w-2xl bg-white/5 backdrop-blur-sm rounded-2xl border border-yellow-400/20 p-5 mb-8">
+        <div className="flex items-start gap-4">
+          {/* 周深头像占位 - 后期替换为真实照片 */}
+          <div className="flex-shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-pink-400 flex items-center justify-center text-3xl">
+            🎤
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-yellow-400/70 uppercase tracking-wider mb-0.5">
+              🌟 本次旅程主题
+            </div>
+            <h2 className="text-white font-bold text-base mb-0.5">
+              {ZHOUSHEN_INTRO.name} · {ZHOUSHEN_INTRO.title}
+            </h2>
+            <div className="text-blue-200/60 text-xs italic mb-2">
+              {ZHOUSHEN_INTRO.quote}
+            </div>
+            {/* 代表作品 */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {ZHOUSHEN_INTRO.achievements.map((item) => (
+                <div key={item} className="text-xs text-blue-200/70 flex items-center gap-1">
+                  <span className="text-yellow-400">♪</span> {item}
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-yellow-400/60 font-medium">
+              {ZHOUSHEN_INTRO.highlights}
+            </div>
+          </div>
+        </div>
+
+        {/* 音乐播放器 */}
+        <div className="mt-4 bg-white/5 rounded-xl p-3 flex items-center gap-3">
+          <div className="text-2xl animate-pulse flex-shrink-0">🎵</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-white text-xs font-medium truncate">
+              正在播放 · 《大鱼》— 周深
+            </div>
+            <div className="mt-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-gradient-to-r from-yellow-400 to-pink-400 rounded-full" />
+            </div>
+          </div>
+          {/* 播放/暂停按钮 */}
+          <button
+            className="flex-shrink-0 w-8 h-8 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-full flex items-center justify-center text-yellow-400 text-sm transition-colors"
+            title="播放周深音乐"
+            onClick={() => alert('音乐播放器：可将周深音乐文件放入 public/music/ 目录后启用')}
+          >
+            ▶
+          </button>
+        </div>
+      </div>
+
       {/* 标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">
           🌟 Charlie&apos;s Star Road
         </h1>
-        <p className="text-lg text-blue-200">欢迎，{username}！开启你的英语星光之旅 ✨</p>
+        <p className="text-lg text-blue-200">
+          欢迎，{username}！开启你的英语星光之旅 ✨
+        </p>
       </div>
 
       {/* 地图容器 */}
