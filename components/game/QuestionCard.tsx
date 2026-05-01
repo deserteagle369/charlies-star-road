@@ -10,8 +10,10 @@ interface QuestionCardProps {
   hint?: string;
   onCorrect: () => void;
   onWrong: () => void;
+  onWrongCount?: (count: number) => void; // 连续答错次数回调
   questionNumber: number;
   totalQuestions: number;
+  wrongCount?: number; // 外部传入的当前答错次数
 }
 
 export default function QuestionCard({
@@ -19,8 +21,10 @@ export default function QuestionCard({
   hint,
   onCorrect,
   onWrong,
+  onWrongCount,
   questionNumber,
   totalQuestions,
+  wrongCount = 0,
 }: QuestionCardProps) {
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
@@ -51,8 +55,10 @@ export default function QuestionCard({
       }, 800);
     } else {
       setFeedback('wrong');
+      const newWrongCount = wrongCount + 1;
       setTimeout(() => {
         onWrong();
+        onWrongCount?.(newWrongCount);
         setFeedback(null);
       }, 800);
     }

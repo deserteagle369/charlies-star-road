@@ -38,7 +38,7 @@ Requirements:
 5. Output ONLY raw JSON, no markdown, no explanation
 
 Output format:
-{"questions":[{"question":"The ___ Tower is Shanghai's iconic landmark.","answer":"Oriental","hint":"Starts with O"}]}`;
+{"questions":[{"question":"The ___ Tower is Shanghai's iconic landmark.","answer":"Oriental","hint":"Starts with O","explanation":"Oriental Pearl Tower is Shanghai's most famous skyscraper."}]}`;
 
     const userMsg = `City: ${cityInfo}\nDifficulty: ${diffLevel}\nGenerate ${count} questions`;
 
@@ -73,6 +73,12 @@ Output format:
       const jsonStr = content.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
       const parsed = JSON.parse(jsonStr);
       questions = parsed.questions || [];
+      // 确保每个问题有 hint 和 explanation
+      questions = questions.map((q: { question: string; answer?: string; hint?: string; explanation?: string }) => ({
+        ...q,
+        hint: q.hint || '',
+        explanation: q.explanation || '',
+      }));
     } catch {
       const match = content.match(/"question"\s*:\s*"([^"]+)"/g);
       if (match) {

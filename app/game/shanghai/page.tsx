@@ -10,11 +10,21 @@ import QuestionCard from '@/components/game/QuestionCard';
 import ProgressBar from '@/components/game/ProgressBar';
 import CameraCapture from '@/components/game/CameraCapture';
 import RewardCard from '@/components/game/RewardCard';
-import { CITY_MAP, getCityTheme } from '@/lib/utils';
+import LearningPanel from '@/components/game/LearningPanel';
+import { CITY_MAP, getCityTheme, CITY_ORDER } from '@/lib/utils';
 
 interface Question {
   question: string;
   hint?: string;
+  answer?: string;
+  explanation?: string;
+}
+
+interface MissionData {
+  current_city: string;
+  completed_cities: string[];
+  total_score: number;
+  unlocked_photos: number;
 }
 
 export default function ShanghaiPage() {
@@ -24,11 +34,29 @@ export default function ShanghaiPage() {
   const theme = getCityTheme(cityKey);
 
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'camera' | 'generating' | 'reward' | 'error'>('loading');
+  const [wrongCount, setWrongCount] = useState(0); // 当前题目答错次数
+  const [showLearning, setShowLearning] = useState(false); // 是否显示学习面板
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [rewardImage, setRewardImage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [missionData, setMissionData] = useState<MissionData | null>(null);
+
+  // 获取闯关进度
+  const fetchMission = async (userId: string) => {
+    try {
+      const res = await fetch('/api/missions', {
+        headers: { 'x-user-id': userId },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMissionData(data);
+        return data;
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
 
   // 加载题目
   useEffect(() => {
@@ -64,12 +92,21 @@ export default function ShanghaiPage() {
     // 答错继续，不扣分
   };
 
+  const handleWrongWithCount = (count: number) => {
+    setWrongCount(count);
+  };
+
+  const handleLearningComplete = (answer: string) => {
+    // 学习完成后直接答对并继续下一题
+    setShowLearning(false);
+    setScore((prev) => prev + 1);
+  };
+
   const handleFinish = () => {
     setGameState('camera');
   };
 
   const handlePhotoCapture = async (photoBase64: string) => {
-    // photoBase64 is captured but not sent to server (Pollinations generates from city prompt)
     setGameState('generating');
     try {
       const response = await fetch('/api/generate-reward', {
@@ -82,6 +119,19 @@ export default function ShanghaiPage() {
 
       const data = await response.json();
       setRewardImage(data.imageUrl);
+
+      // 调用闯关完成 API
+      try {
+        await fetch('/api/complete-city', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': 'demo-user', // TODO: 替换为真实 session user_id
+          },
+          body: JSON.stringify({ city: cityKey, score }),
+        });
+      } catch { /* 静默失败，不阻塞奖励展示 */ }
+
       setGameState('reward');
     } catch (err) {
       setErrorMsg('生成奖励图片失败，请稍后重试');
@@ -90,7 +140,18 @@ export default function ShanghaiPage() {
     }
   };
 
-  const handleSkipCamera = () => {
+  const handleSkipCamera = async () => {
+    // 跳过拍照也标记闯关完成
+    try {
+      await fetch('/api/complete-city', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'demo-user',
+        },
+        body: JSON.stringify({ city: cityKey, score }),
+      });
+    } catch { /* ignore */ }
     setGameState('reward');
   };
 
@@ -143,11 +204,18 @@ export default function ShanghaiPage() {
 
   // 通关奖励
   if (gameState === 'reward') {
+    const totalStations = CITY_ORDER.length;
+    const completedCities = missionData?.completed_cities || [cityKey];
+    const unlockedPhotos = missionData?.unlocked_photos ?? completedCities.length;
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <RewardCard
           imageUrl={rewardImage || ''}
           cityName={city.zh}
+          completedCities={completedCities}
+          unlockedPhotos={unlockedPhotos}
+          totalStations={totalStations}
         />
       </div>
     );
@@ -169,6 +237,15 @@ export default function ShanghaiPage() {
           {city.zh} 站
         </h1>
         <p className="text-blue-200 text-sm">{city.en} - 英语填空挑战</p>
+        {/* 激励标签 */}
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <span className="bg-yellow-400/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full">
+            🎯 每答对一题解锁下一题
+          </span>
+          <span className="bg-pink-400/20 text-pink-300 text-xs px-2 py-0.5 rounded-full">
+            📸 通关后解锁新照片
+          </span>
+        </div>
       </div>
 
       {/* 进度条 */}
@@ -184,28 +261,58 @@ export default function ShanghaiPage() {
           hint={currentQuestion.hint}
           questionNumber={currentIndex + 1}
           totalQuestions={questions.length}
+          wrongCount={wrongCount}
           onCorrect={handleCorrect}
           onWrong={handleWrong}
+          onWrongCount={handleWrongWithCount}
         />
       )}
 
-      {/* 下一题按钮 */}
-      {!isLastQuestion && score >= currentIndex + 1 && (
+      {/* 学一学按钮（连续答错3次后出现） */}
+      {wrongCount >= 3 && !showLearning && (
         <button
-          onClick={() => setCurrentIndex((prev) => prev + 1)}
-          className="mt-6 px-6 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20"
+          onClick={() => setShowLearning(true)}
+          className="mt-4 px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-xl text-amber-300 text-sm border border-amber-500/30 transition-colors"
         >
-          下一题 →
+          📚 学一学 — 答错了？点我解锁答案
         </button>
       )}
 
-      {/* 完成按钮（当答对当前题目时显示） */}
+      {/* 学习面板 */}
+      {showLearning && currentQuestion && (
+        <LearningPanel
+          question={currentQuestion.question}
+          hint={currentQuestion.hint || ''}
+          city={cityKey}
+          onComplete={handleLearningComplete}
+          onClose={() => setShowLearning(false)}
+        />
+      )}
+
+      {/* 下一题按钮（必须答对才能继续） */}
+      {!isLastQuestion && score >= currentIndex + 1 && (
+        <button
+          onClick={() => setCurrentIndex((prev) => prev + 1)}
+          className="mt-6 px-6 py-2 bg-green-500/30 hover:bg-green-500/40 rounded-xl text-green-300 transition-colors"
+        >
+          下一题 → ({currentIndex + 2}/{questions.length})
+        </button>
+      )}
+
+      {/* 答对提示（但下一题还没解锁） */}
+      {!isLastQuestion && score < currentIndex + 1 && (
+        <p className="mt-6 text-blue-200/50 text-sm">
+          答对当前题目才能继续 ✨
+        </p>
+      )}
+
+      {/* 完成按钮（必须所有题目都答对） */}
       {isLastQuestion && score >= questions.length && (
         <button
           onClick={handleFinish}
-          className="mt-6 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-bold text-lg hover:from-green-600 hover:to-emerald-600"
+          className="mt-6 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-bold text-lg hover:from-green-600 hover:to-emerald-600 shadow-lg shadow-green-500/30"
         >
-          🎉 完成挑战！
+          🎉 完成挑战！领取奖励！
         </button>
       )}
     </div>
