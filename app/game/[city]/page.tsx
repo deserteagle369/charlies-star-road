@@ -1,5 +1,6 @@
 /**
- * 上海站 - 第一关答题页面
+ * 动态城市答题页面
+ * 所有城市站复用此页面，启用朗读验证模式
  */
 'use client';
 
@@ -27,15 +28,29 @@ interface MissionData {
   unlocked_photos: number;
 }
 
-export default function ShanghaiPage() {
+export default function CityPage() {
   const params = useParams();
   const cityKey = (params.city as string) || 'shanghai';
-  const city = CITY_MAP[cityKey] || CITY_MAP.shanghai;
+  const city = CITY_MAP[cityKey];
+
+  // 城市不存在时回退
+  if (!city) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-6xl mb-4">🤷</div>
+        <h2 className="text-2xl font-bold text-white mb-2">未知站点</h2>
+        <Link href="/" className="text-blue-300 hover:text-white">
+          ← 返回地图
+        </Link>
+      </div>
+    );
+  }
+
   const theme = getCityTheme(cityKey);
 
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'camera' | 'generating' | 'reward' | 'error'>('loading');
-  const [wrongCount, setWrongCount] = useState(0); // 当前题目答错次数
-  const [showLearning, setShowLearning] = useState(false); // 是否显示学习面板
+  const [wrongCount, setWrongCount] = useState(0);
+  const [showLearning, setShowLearning] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -43,7 +58,11 @@ export default function ShanghaiPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [missionData, setMissionData] = useState<MissionData | null>(null);
 
-  // 获取闯关进度
+  // 加载题目
+  useEffect(() => {
+    loadQuestions();
+  }, [cityKey]);
+
   const fetchMission = async (userId: string) => {
     try {
       const res = await fetch('/api/missions', {
@@ -57,11 +76,6 @@ export default function ShanghaiPage() {
     } catch { /* ignore */ }
     return null;
   };
-
-  // 加载题目
-  useEffect(() => {
-    loadQuestions();
-  }, [cityKey]);
 
   const loadQuestions = async () => {
     setGameState('loading');
@@ -97,7 +111,6 @@ export default function ShanghaiPage() {
   };
 
   const handleLearningComplete = (answer: string) => {
-    // 学习完成后直接答对并继续下一题
     setShowLearning(false);
     setScore((prev) => prev + 1);
   };
@@ -120,13 +133,12 @@ export default function ShanghaiPage() {
       const data = await response.json();
       setRewardImage(data.imageUrl);
 
-      // 调用闯关完成 API
       try {
         await fetch('/api/complete-city', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-user-id': 'demo-user', // TODO: 替换为真实 session user_id
+            'x-user-id': 'demo-user',
           },
           body: JSON.stringify({ city: cityKey, score }),
         });
@@ -141,7 +153,6 @@ export default function ShanghaiPage() {
   };
 
   const handleSkipCamera = async () => {
-    // 跳过拍照也标记闯关完成
     try {
       await fetch('/api/complete-city', {
         method: 'POST',
@@ -221,9 +232,30 @@ export default function ShanghaiPage() {
     );
   }
 
+  // 题库为空时
+  if (questions.length === 0 && gameState === 'playing') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-6xl mb-4">{city.emoji}</div>
+        <h2 className="text-2xl font-bold text-white mb-2">{city.zh} 站</h2>
+        <p className="text-yellow-300 text-center mb-6">📭 暂无题目</p>
+        <p className="text-blue-200/70 text-sm text-center mb-6">
+          该关卡题库为空，请联系管理员添加题目
+        </p>
+        <Link
+          href="/"
+          className="px-6 py-3 bg-white/20 rounded-xl text-white hover:bg-white/30"
+        >
+          ← 返回地图
+        </Link>
+      </div>
+    );
+  }
+
   // 答题中
   const currentQuestion = questions[currentIndex];
-  const isLastQuestion = currentIndex >= questions.length - 1;
+  const totalQuestions = questions.length;
+  const isLastQuestion = totalQuestions > 0 && currentIndex >= totalQuestions - 1;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -245,6 +277,9 @@ export default function ShanghaiPage() {
           <span className="bg-pink-400/20 text-pink-300 text-xs px-2 py-0.5 rounded-full">
             📸 通关后解锁新照片
           </span>
+          <span className="bg-purple-400/20 text-purple-300 text-xs px-2 py-0.5 rounded-full">
+            🎤 朗读验证模式
+          </span>
         </div>
       </div>
 
@@ -258,6 +293,7 @@ export default function ShanghaiPage() {
         <QuestionCard
           key={currentIndex}
           question={currentQuestion.question}
+          answer={currentQuestion.answer || ''}
           hint={currentQuestion.hint}
           questionNumber={currentIndex + 1}
           totalQuestions={questions.length}
@@ -265,6 +301,7 @@ export default function ShanghaiPage() {
           onCorrect={handleCorrect}
           onWrong={handleWrong}
           onWrongCount={handleWrongWithCount}
+          speakingEnabled={true}
         />
       )}
 
@@ -289,7 +326,7 @@ export default function ShanghaiPage() {
         />
       )}
 
-      {/* 下一题按钮（必须答对才能继续） */}
+      {/* 下一题按钮 */}
       {!isLastQuestion && score >= currentIndex + 1 && (
         <button
           onClick={() => setCurrentIndex((prev) => prev + 1)}
@@ -299,14 +336,13 @@ export default function ShanghaiPage() {
         </button>
       )}
 
-      {/* 答对提示（但下一题还没解锁） */}
       {!isLastQuestion && score < currentIndex + 1 && (
         <p className="mt-6 text-blue-200/50 text-sm">
           答对当前题目才能继续 ✨
         </p>
       )}
 
-      {/* 完成按钮（必须所有题目都答对） */}
+      {/* 完成按钮 */}
       {isLastQuestion && score >= questions.length && (
         <button
           onClick={handleFinish}

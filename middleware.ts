@@ -14,11 +14,31 @@ export async function middleware(request: NextRequest) {
     return await updateSession(request);
   }
 
+  // Admin login page - always accessible
+  if (pathname === '/admin/login') {
+    return await updateSession(request);
+  }
+
+  // Admin routes - require auth
+  if (pathname.startsWith('/admin')) {
+    const supabaseResponse = await updateSession(request);
+
+    // Check if user is authenticated
+    const hasSessionCookie = request.cookies.has('sb-rygxbkzyonolbdkpbxfk-auth-token');
+
+    if (!hasSessionCookie) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      return Response.redirect(url);
+    }
+
+    return supabaseResponse;
+  }
+
   // Game routes - require auth
   if (pathname.startsWith('/game')) {
     const supabaseResponse = await updateSession(request);
 
-    // Check if user is authenticated by looking for session cookie
     const hasSessionCookie = request.cookies.has('sb-rygxbkzyonolbdkpbxfk-auth-token');
 
     if (!hasSessionCookie) {
@@ -37,6 +57,7 @@ export const config = {
   matcher: [
     '/game/:path*',
     '/auth/:path*',
+    '/admin/:path*',
     '/login',
   ],
 };

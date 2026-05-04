@@ -26,11 +26,12 @@ export async function POST(req: NextRequest) {
 Hint: ${hint || 'No hint available'}
 
 Generate a JSON object with:
-- "title": Short engaging title for the reading passage (in Chinese)
+- "title": Short engaging title for the reading passage (MUST be in Chinese/中文)
 - "passage": A short English paragraph (80-120 words) about the topic, using simple vocabulary
-- "vocabulary": Array of key words [{"word": "evening", "meaning": "夜晚，指下午6点到午夜之间的时间"}], each with English word and Chinese meaning
-- "tip": One helpful learning tip in Chinese
+- "vocabulary": Array of key words [{"word": "evening", "meaning": "夜晚，指下午6点到午夜之间的时间"}], each with English word and Chinese meaning (meaning MUST be in Chinese/中文)
+- "tip": One helpful learning tip (MUST be in Chinese/中文)
 
+IMPORTANT: All Chinese text (title, meaning, tip) MUST be proper Chinese characters, NOT garbled text or random symbols.
 The passage should help learners understand the answer naturally. Make the vocabulary relevant to the question topic.
 Output ONLY raw JSON, no markdown, no explanation.`;
 
@@ -66,16 +67,17 @@ Output ONLY raw JSON, no markdown, no explanation.`;
       const jsonStr = content.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
       data = JSON.parse(jsonStr);
     } catch {
-      // Fallback 内容
+      // Fallback 内容 - 确保中文正确
       data = {
         title: '上海夜生活',
         passage: 'Shanghai comes alive at night. The Bund glows with city lights. People love to explore the evening scene along the Huangpu River. Night markets offer delicious street food. Many visitors enjoy the vibrant nightlife in Puxi and Pudong. The Oriental Pearl Tower sparkles after dark. Evening walks along the river are very popular.',
         vocabulary: [
-          { word: 'evening', meaning: '傍晚，夜间（下午6点到午夜）' },
-          { word: 'nightlife', meaning: '夜生活，夜间娱乐活动' },
-          { word: 'explore', meaning: '探索，游览' },
+          { word: 'coast', meaning: '海岸，海滨' },
+          { word: 'destination', meaning: '目的地，旅游胜地' },
+          { word: 'tourist', meaning: '游客，观光客' },
+          { word: 'nightlife', meaning: '夜生活' },
         ],
-        tip: '记住：evening 通常指下午6点到午夜，是"夜间活动"最常用的搭配词！',
+        tip: '记忆技巧：coast 和 coast line（海岸线）常一起使用，记住 "on the coast" 表示"在海岸线上"。',
       };
     }
 
