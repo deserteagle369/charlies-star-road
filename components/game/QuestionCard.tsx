@@ -108,8 +108,11 @@ export default function QuestionCard({
   // 显示的问题文本（去掉末尾括号答案）
   const displayQuestion = question.replace(/\([^)]+\)\s*$/, '');
 
-  // 朗读阶段的完整句子
+  // 朗读阶段的完整句子（答题界面显示用，含下划线）
   const fullSentence = question.replace(/\s*\([^)]+\)\s*$/, '');
+
+  // 朗读验证用的完整句子（把下划线/空格替换为正确答案，用于语音匹配）
+  const speakSentence = fullSentence.replace(/_+/, answer).replace(/\s{2,}/, ' ');
 
   return (
     <div
@@ -202,7 +205,7 @@ export default function QuestionCard({
       {phase === 'speak' && (
         <div className="flex flex-col gap-3">
           <VoiceRecorder
-            expectedAnswer={fullSentence}
+            expectedAnswer={speakSentence}
             onSuccess={handleSpeakSuccess}
             onFail={handleSpeakFail}
           />
