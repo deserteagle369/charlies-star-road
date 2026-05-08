@@ -27,7 +27,7 @@ function createRecognition(
   if (!SpeechRecognitionAPI) return null;
 
   const recognition = new SpeechRecognitionAPI();
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = 'en-US';
   recognition.maxAlternatives = 1;
@@ -56,9 +56,10 @@ export default function VoiceRecorder({
   // 录音状态用 ref 记录（不受闭包影响），避免 onEnd 里读到过期的 status
   const isRecordingRef = useRef(false);
   const finalTextRef = useRef('');
-  const interimRef = useRef('');
+  const [interimText, setInterimText] = useState('');  // 实时识别文字（state 用于 UI 更新）
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -126,7 +127,7 @@ export default function VoiceRecorder({
     if (disabled) return;
 
     finalTextRef.current = '';
-    interimRef.current = '';
+    setInterimText('');
     setError('');
     setStatus('recording');
     isRecordingRef.current = true;
@@ -135,14 +136,18 @@ export default function VoiceRecorder({
     const onResult = (text: string, isFinal: boolean) => {
       if (isFinal) {
         finalTextRef.current += text;
-        interimRef.current = '';
+        setInterimText('');  // 清空临时文字
       } else {
-        interimRef.current = text;
+        setInterimText(text);  // 实时更新识别中的文字
       }
     };
 
     // 核心：isRecordingRef 检查，绕开 stale closure 问题
     const onEnd = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       stopAudioAnalysis();
       if (recognitionRef.current) {
         recognitionRef.current.onend = null;
@@ -165,6 +170,10 @@ export default function VoiceRecorder({
     };
 
     const onError = (err: string) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       stopAudioAnalysis();
       if (recognitionRef.current) {
         recognitionRef.current.onend = null;
@@ -199,6 +208,12 @@ export default function VoiceRecorder({
     recognitionRef.current = recognition;
     try {
       recognition.start();
+      // 10 秒超时自动停止
+      timeoutRef.current = setTimeout(() => {
+        if (recognitionRef.current && isRecordingRef.current) {
+          try { recognitionRef.current.stop(); } catch { /* 忽略 */ }
+        }
+      }, 10000);
     } catch {
       isRecordingRef.current = false;
       setStatus('idle');
@@ -209,6 +224,10 @@ export default function VoiceRecorder({
   // 手动停止录音
   const stopRecording = useCallback(() => {
     isRecordingRef.current = false;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* 可能已停止 */ }
       recognitionRef.current.onend = null;
@@ -222,13 +241,16 @@ export default function VoiceRecorder({
   useEffect(() => {
     return () => {
       isRecordingRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       stopAudioAnalysis();
       try { recognitionRef.current?.abort(); } catch { /* 静默 */ }
     };
   }, [stopAudioAnalysis]);
 
   // 显示内容
-  const showInterim = status === 'recording' && interimRef.current;
+  const showInterim = status === 'recording' && interimText;
   const showSuccess = status === 'success';
   const showFail = status === 'fail';
   const showIdle = status === 'idle';
@@ -256,7 +278,7 @@ export default function VoiceRecorder({
       {/* 实时识别文字 */}
       {showInterim && (
         <div className="max-w-xs text-center text-xs text-purple-200/80 bg-purple-900/30 rounded-lg px-3 py-1.5 truncate">
-          {interimRef.current}
+          {interimText}
         </div>
       )}
 
