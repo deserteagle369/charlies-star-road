@@ -86,6 +86,20 @@ export default function WorldMap({ completedCities = [], username = 'Explorer' }
         ))}
       </div>
 
+      {/* 个人资料按钮 */}
+      <div className="absolute top-2 right-4 z-10">
+        <Link
+          href="/profile"
+          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/10 transition-all"
+        >
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-yellow-400 to-pink-500 flex items-center justify-center text-xs font-bold text-white">
+            {username[0]?.toUpperCase() || '?'}
+          </div>
+          <span className="text-white/80 text-sm hidden sm:inline">{username}</span>
+          <span className="text-blue-300 text-xs">⚙️</span>
+        </Link>
+      </div>
+
       {/* 周深介绍区 */}
       <div className="w-full max-w-2xl bg-white/5 backdrop-blur-sm rounded-2xl border border-yellow-400/20 p-5 mb-6">
         <div className="flex items-start gap-4">
